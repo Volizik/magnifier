@@ -9,8 +9,8 @@
     <style>
         #wrap {
             position: relative;
-            height: 200px;
-            width: 200px;
+            height: 500px;
+            width: 500px;
             overflow: hidden;
         }
         #natural {
@@ -58,7 +58,7 @@
         return Math.max(widthScale, heightScale);
     }
 
-    function getCoords(elem) {   // кроме IE8-
+    function getCoords(elem) {
         const box = elem.getBoundingClientRect();
 
         return {
