@@ -1,88 +1,53 @@
 class Magnifier {
-
     constructor({ containerId = 'magnifier', imageSrc }) {
         if (!imageSrc) throw Error('imagesSrc is required!');
 
-        this.createDOM(containerId, imageSrc);
-        this.addHandlers(DOMCreator.wrapId, DOMCreator.smallImageId, DOMCreator.naturalSizeImageId);
+        this.wrapId = 'magnifier_wrap';
+        this.smallImageId = 'magnifier_small_image'
+        this.naturalSizeImageId = 'magnifier_natural_size_image'
+
+        this.#createDOM(containerId, imageSrc);
+        this.#addHandlers();
     }
 
-    createDOM(containerId, imageSrc) {
-        new DOMCreator().createElements(containerId, imageSrc).appendStyles();
+    #createDOM(containerId, imageSrc) {
+        const elements = [
+            {tag: 'div', attrs: {id: this.wrapId}},
+            {tag: 'img', attrs: {id: this.smallImageId, src: imageSrc}},
+            {tag: 'img', attrs: {id: this.naturalSizeImageId, src: imageSrc}},
+        ];
+        const styles = `
+                #${this.wrapId} {
+                    position: relative;
+                    height: 100%;
+                    width: 100%;
+                    overflow: hidden;
+                }
+                #${this.naturalSizeImageId} {
+                    position: absolute;
+                    opacity: 0;
+                    left: 0;
+                    top: 0;
+                }
+                #${this.smallImageId} {
+                    position: relative;
+                    height: 100%;
+                    width: 100%;
+                    touch-action: none;
+                    user-select: none;
+                    z-index: 1;
+                    transition: transform 0.2s;
+                }
+            `;
+        new DOMCreator().createElements(containerId, elements).appendStyles(styles);
     }
 
-    addHandlers(wrapId, smallImageId, naturalSizeImageId) {
-        new MovementHandlers(wrapId, smallImageId, naturalSizeImageId).add();
+    #addHandlers() {
+        new MagnifierMovementHandlers(this.wrapId, this.smallImageId, this.naturalSizeImageId).add();
     }
-
 }
 
-class DOMCreator {
-    static wrapId = 'magnifier_wrap';
-    static smallImageId = 'magnifier_small_image'
-    static naturalSizeImageId = 'magnifier_natural_size_image'
-
-    static #makeElement(tag, id) {
-        const element = document.createElement(tag);
-        element.id = id;
-        return element;
-    }
-
-    createElements(containerId, imageSrc) {
-        const container = document.getElementById(containerId)
-
-        if (!container) {
-            console.error(`Cant find container by id "${containerId}". Check if containerId is right`);
-            return this;
-        }
-
-        const wrap = DOMCreator.#makeElement('div', DOMCreator.wrapId);
-        const smallImage = DOMCreator.#makeElement('img', DOMCreator.smallImageId);
-        const naturalImage = DOMCreator.#makeElement('img', DOMCreator.naturalSizeImageId);
-
-        smallImage.src = imageSrc;
-        naturalImage.src = imageSrc;
-
-        wrap.appendChild(smallImage);
-        wrap.appendChild(naturalImage);
-        container.appendChild(wrap);
-
-        return this;
-    }
-
-    appendStyles() {
-        const style = document.createElement('style');
-        style.textContent = `
-        #${DOMCreator.wrapId} {
-            position: relative;
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-        }
-        #${DOMCreator.naturalSizeImageId} {
-            position: absolute;
-            opacity: 0;
-            left: 0;
-            top: 0;
-        }
-        #${DOMCreator.smallImageId} {
-            position: relative;
-            height: 100%;
-            width: 100%;
-            touch-action: none;
-            user-select: none;
-            z-index: 1;
-            transition: transform 0.2s;
-        }
-        `;
-        document.head.appendChild(style);
-
-        return this;
-    }
-
-}
-
-class MovementHandlers {
+class MagnifierMovementHandlers {
     isZoomed = false;
     #touchDevice = (navigator.maxTouchPoints || 'ontouchstart' in document.documentElement);
 
@@ -98,9 +63,9 @@ class MovementHandlers {
     #animationSpeedMouse = 0.1;
 
     constructor(wrapId, smallImageId, naturalSizeImageId) {
+        this.wrap = document.getElementById(wrapId);
         this.smallImage = document.getElementById(smallImageId);
         this.naturalSizeImage = document.getElementById(naturalSizeImageId);
-        this.wrap = document.getElementById(wrapId);
         this.wrapDimensions = this.wrap.getBoundingClientRect();
 
         this.#animationSpeed = this.#touchDevice ? this.#animationSpeedTouch : this.#animationSpeedMouse;
@@ -246,8 +211,8 @@ class MovementHandlers {
     }
 
     #onMouseMove({ clientX, clientY }) {
-        this.#cursorX = clientX - this.wrapDimensions.width;
-        this.#cursorY = clientY - this.wrapDimensions.height;
+        this.#cursorX = clientX - this.wrapDimensions.left;
+        this.#cursorY = clientY - this.wrapDimensions.top;
     }
 
     #onEnter({ clientX, clientY }) {
@@ -267,5 +232,184 @@ class MovementHandlers {
 
         cancelAnimationFrame(this.animationId);
         this.smallImage.style.transform = `scale(1)`;
+    }
+}
+
+class DOMCreator {
+    #makeElement(tag, attrs) {
+        const element = document.createElement(tag);
+        Object.entries(attrs).forEach(([key, value]) => {
+            element[key] = value;
+        });
+        return element;
+    }
+
+    createElements(containerId, elements) {
+        const container = document.getElementById(containerId)
+
+        if (!container) {
+            console.error(`Cant find container by id "${containerId}". Check if containerId is right`);
+            return this;
+        }
+
+        const { tag, attrs } = elements.shift();
+        const wrap = this.#makeElement(tag, attrs)
+
+        elements
+            .map(({ tag, attrs }) => this.#makeElement(tag, attrs))
+            .forEach((elem) => wrap.appendChild(elem));
+
+        container.appendChild(wrap);
+
+        return this;
+    }
+
+    appendStyles(styles) {
+        const style = document.createElement('style');
+        style.textContent = styles;
+        document.head.appendChild(style);
+
+        return this;
+    }
+}
+
+class MagnifierGlass {
+    constructor({ containerId = 'magnifier', imageSrc, glassSize = 100 }) {
+        if (!imageSrc) throw Error('imagesSrc is required!');
+
+        this.wrapId = 'magnifier_wrap';
+        this.imageId = 'magnifier_image';
+        this.imageGlassId = 'magnifier_image_glass';
+        this.glassSize = glassSize;
+
+        this.#createDOM(containerId, imageSrc);
+        this.#addHandlers();
+    }
+
+    #createDOM(containerId, imageSrc) {
+        const elements = [
+            {tag: 'div', attrs: {id: this.wrapId}},
+            {tag: 'div', attrs: {id: this.imageGlassId}},
+            {tag: 'img', attrs: {id: this.imageId, src: imageSrc}},
+        ];
+        const styles = `
+                #${this.wrapId} {
+                    position: relative;
+                    height: 100%;
+                    width: 100%;
+                }
+                #${this.imageGlassId} {
+                    position: absolute;
+                    border: 3px solid #000;
+                    border-radius: 50%;
+                    cursor: none;
+                    box-sizing: border-box;
+                    width: ${this.glassSize}px;
+                    height: ${this.glassSize}px;
+                    background-image: url('${imageSrc}');
+                    background-repeat: no-repeat;
+                }
+                #${this.imageId} {
+                    height: 100%;
+                    width: 100%;
+                }
+            `;
+        new DOMCreator().createElements(containerId, elements).appendStyles(styles);
+    }
+
+    #addHandlers() {
+        new MagnifierGlassMovementHandlers(this.wrapId, this.imageId, this.imageGlassId).add();
+    }
+}
+
+class MagnifierGlassMovementHandlers {
+    isZoomed = false;
+    #touchDevice = (navigator.maxTouchPoints || 'ontouchstart' in document.documentElement);
+
+    #animationSpeed;
+    #animationSpeedTouch = 0.2;
+    #animationSpeedMouse = 0.1;
+
+
+
+    constructor(wrapId, imageId, imageGlassId) {
+        this.wrap = document.getElementById(wrapId);
+        this.image = document.getElementById(imageId);
+        this.glass = document.getElementById(imageGlassId);
+
+        this.#addStyles();
+
+        this.bw = 3;
+        this.w = this.glass.offsetWidth / 2;
+        this.h = this.glass.offsetHeight / 2;
+        this.zoom = this.#getScale() || 2;
+
+        this.#animationSpeed = this.#touchDevice ? this.#animationSpeedTouch : this.#animationSpeedMouse;
+    }
+
+    // #animate(){
+    //     let distX = this.#cursorX - this.#smallImageX;
+    //     let distY = this.#cursorY - this.#smallImageY;
+    //
+    //     this.#smallImageX += distX * this.#animationSpeed;
+    //     this.#smallImageY += distY * this.#animationSpeed;
+    //
+    //     this.smallImage.style.transformOrigin = `${this.#smallImageX}px ${this.#smallImageY}px`;
+    //
+    //     this.animationId = requestAnimationFrame(this.#animate.bind(this));
+    // }
+
+    add() {
+        if (this.#touchDevice) {
+            this.glass.addEventListener("touchmove", this.#moveGlass.bind(this));
+            this.image.addEventListener("touchmove", this.#moveGlass.bind(this));
+        } else {
+            this.glass.addEventListener("mousemove", this.#moveGlass.bind(this));
+            this.image.addEventListener("mousemove", this.#moveGlass.bind(this));
+        }
+    }
+
+    #getScale() {
+        const { height, width, naturalHeight, naturalWidth } = this.image;
+        const heightScale = naturalHeight > height ? naturalHeight / height > 1 ? naturalHeight / height : naturalHeight / height + 1 : 1;
+        const widthScale = naturalWidth > width ? naturalWidth / width > 1 ? naturalWidth / width : naturalWidth / width + 1 : 1;
+
+        return Math.max(widthScale, heightScale);
+    }
+
+    #moveGlass(e) {
+        /* Prevent any other actions that may occur when moving over the image */
+        e.preventDefault();
+        /* Get the cursor's x and y positions: */
+        const pos = this.#getCursorPos(e);
+        let x = pos.x;
+        let y = pos.y;
+        /* Prevent the magnifier glass from being positioned outside the image: */
+        if (x > this.image.width - (this.w / this.zoom)) {x = this.image.width - (this.w / this.zoom);}
+        if (x < this.w / this.zoom) {x = this.w / this.zoom;}
+        if (y > this.image.height - (this.h / this.zoom)) {y = this.image.height - (this.h / this.zoom);}
+        if (y < this.h / this.zoom) {y = this.h / this.zoom;}
+        /* Set the position of the magnifier glass: */
+        this.glass.style.left = (x - this.w) + "px";
+        this.glass.style.top = (y - this.h) + "px";
+        /* Display what the magnifier glass "sees": */
+        this.glass.style.backgroundPosition = "-" + ((x * this.zoom) - this.w + this.bw) + "px -" + ((y * this.zoom) - this.h + this.bw) + "px";
+    }
+
+    #addStyles() {
+        this.glass.style.backgroundSize = `${this.image.width * this.zoom}px ${this.image.height * this.zoom}px`;
+    }
+
+    #getCursorPos(e) {
+        /* Get the x and y positions of the image: */
+        const { left, top } = this.image.getBoundingClientRect();
+        /* Calculate the cursor's x and y coordinates, relative to the image: */
+        let x = e.pageX - left;
+        let y = e.pageY - top;
+        /* Consider any page scrolling: */
+        x = x - window.scrollX;
+        y = y - window.scrollY;
+
+        return { x, y };
     }
 }
