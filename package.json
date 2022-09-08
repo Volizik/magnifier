@@ -1,14 +1,16 @@
 {
   "name": "magnifier",
   "version": "1.0.0",
-  "description": "",
+  "description": "Simple magnifier on native javascript with smooth movement",
   "private": true,
   "main": "dist/index.js",
   "scripts": {
     "start": "webpack serve",
     "transpile": "rimraf dist && babel src --out-dir dist --ignore 'src/dev'",
     "prepublishOnly": "npm run transpile",
-    "build": "rimraf examples/dist && webpack --mode production"
+    "build": "rimraf examples/dist && webpack --mode production",
+    "deploy": "gh-pages -d example/dist",
+    "publish-demo": "npm run build && npm run deploy"
   },
   "repository": {
     "type": "git",
@@ -29,7 +31,7 @@
   "bugs": {
     "url": "https://github.com/Volizik/magnifier/issues"
   },
-  "homepage": "https://github.com/Volizik/magnifier#readme",
+  "homepage": "https://volizik.github.io/magnifier",
   "devDependencies": {
     "@babel/cli": "^7.18.10",
     "@babel/core": "^7.18.13",
