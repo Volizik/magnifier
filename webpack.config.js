@@ -18,7 +18,17 @@ module.exports = {
     resolve: {
         extensions: [".js", ".jsx"]
     },
+    module: {
+        rules: [
+            {
+                test: /\.(png|svg|jpg|jpeg|gif)$/i,
+                type: 'asset/resource',
+            },
+        ]
+    },
     devServer: {
-        port: 3001
+        port: 3001,
+        hot: true,
+        watchFiles: 'example/src/**/*'
     }
 };

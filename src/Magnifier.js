@@ -2,29 +2,29 @@ import { DOMCreator } from './utils/DOMCreator';
 import { Utils } from './utils/Utils';
 
 export class Magnifier {
-    constructor({ containerId = 'magnifier', imageSrc }) {
-        if (!imageSrc) throw Error('imagesSrc is required!');
+    constructor({ containerId = 'magnifier', src }) {
+        if (!src) throw Error('imagesSrc is required!');
 
-        this.wrapId = 'magnifier_wrap';
-        this.smallImageId = 'magnifier_small_image'
-        this.naturalSizeImageId = 'magnifier_natural_size_image'
+        this.wrapId = `${containerId}_wrap`;
+        this.smallImageId = `${containerId}_small_image`;
+        this.naturalSizeImageId = `${containerId}_natural_size_image`;
 
-        this.#createDOM(containerId, imageSrc);
+        this.#createDOM(containerId, src);
         this.#addHandlers();
     }
 
-    #createDOM(containerId, imageSrc) {
+    #createDOM(containerId, src) {
         const elements = [
             {tag: 'div', attrs: {id: this.wrapId}},
-            {tag: 'img', attrs: {id: this.smallImageId, src: imageSrc}},
-            {tag: 'img', attrs: {id: this.naturalSizeImageId, src: imageSrc}},
+            {tag: 'img', attrs: {id: this.smallImageId, src}},
+            {tag: 'img', attrs: {id: this.naturalSizeImageId, src}},
         ];
         const styles = `
                 #${this.wrapId} {
                     position: relative;
-                    height: 100%;
                     width: 100%;
                     overflow: hidden;
+                    aspect-ratio: 1/1;
                 }
                 #${this.naturalSizeImageId} {
                     position: absolute;
@@ -109,7 +109,6 @@ class MagnifierMovementHandlers {
                 setTimeout(() => { tapedTwice = false }, 300);
                 return false;
             }
-            console.log('doubleClick');
 
             this.#onEnter({ clientY, clientX });
 
@@ -131,7 +130,6 @@ class MagnifierMovementHandlers {
                 setTimeout(() => { tapedTwice = false }, 300);
                 return false;
             }
-            console.log('doubleClick');
 
             this.#onLeave();
 
